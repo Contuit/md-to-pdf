@@ -58,6 +58,7 @@ export async function mdToPdf(input: Input, config: Partial<Config> = {}): Promi
 		pdf = await convertMdToPdf(input, mergedConfig, { browser });
 	} catch (error) {
 		console.error(error);
+		throw error; // Re-throw the error after logging it
 	} finally {
 		await browser.close();
 		await closeServer(server);
