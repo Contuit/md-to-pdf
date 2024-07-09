@@ -3,7 +3,7 @@ import puppeteer, { Browser } from 'puppeteer';
 import { Config, HtmlConfig, PdfConfig } from './config';
 import { isHttpUrl } from './is-http-url';
 
-export type Output = PdfOutput | HtmlOutput;
+export type Output = PdfOutput | HtmlOutput | undefined;
 
 export interface PdfOutput extends BasicOutput {
 	content: Buffer;
