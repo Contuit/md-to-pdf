@@ -70,7 +70,7 @@ export async function generateOutput(
 
 	const page = await browser.newPage();
 
-	page.setDefaultNavigationTimeout(config.timeout || 0)
+	page.setDefaultNavigationTimeout(config.timeout || 30000)
 
 	const urlPathname = join(relativePath, 'index.html').split(sep).join(posix.sep);
 

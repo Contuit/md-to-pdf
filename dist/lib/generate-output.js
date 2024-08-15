@@ -28,7 +28,7 @@ async function generateOutput(html, relativePath, config, browserRef) {
     }
     const browser = await getBrowser();
     const page = await browser.newPage();
-    page.setDefaultNavigationTimeout(config.timeout || 0);
+    page.setDefaultNavigationTimeout(config.timeout || 30000);
     const urlPathname = (0, path_1.join)(relativePath, 'index.html').split(path_1.sep).join(path_1.posix.sep);
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     await page.goto(`http://localhost:${config.port}/${urlPathname}`); // make sure relative paths work as expected
