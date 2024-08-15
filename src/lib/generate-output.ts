@@ -70,6 +70,8 @@ export async function generateOutput(
 
 	const page = await browser.newPage();
 
+	page.setDefaultNavigationTimeout(config.timeout || 0)
+
 	const urlPathname = join(relativePath, 'index.html').split(sep).join(posix.sep);
 
 	// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -95,7 +97,7 @@ export async function generateOutput(
 	 * @see https://github.com/GoogleChrome/puppeteer/issues/3083
 	 */
 	await Promise.all([
-		page.waitForNavigation({ waitUntil: 'networkidle0', timeout: config.timeout || 30000 }),
+		page.waitForNavigation({ waitUntil: 'networkidle0' }),
 		page.evaluate(() => history.pushState(undefined, '', '#')) /* eslint no-undef: off */,
 	]);
 

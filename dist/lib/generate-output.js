@@ -28,6 +28,7 @@ async function generateOutput(html, relativePath, config, browserRef) {
     }
     const browser = await getBrowser();
     const page = await browser.newPage();
+    page.setDefaultNavigationTimeout(config.timeout || 0);
     const urlPathname = (0, path_1.join)(relativePath, 'index.html').split(path_1.sep).join(path_1.posix.sep);
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     await page.goto(`http://localhost:${config.port}/${urlPathname}`); // make sure relative paths work as expected
@@ -48,7 +49,7 @@ async function generateOutput(html, relativePath, config, browserRef) {
      * @see https://github.com/GoogleChrome/puppeteer/issues/3083
      */
     await Promise.all([
-        page.waitForNavigation({ waitUntil: 'networkidle0', timeout: config.timeout || 30000 }),
+        page.waitForNavigation({ waitUntil: 'networkidle0' }),
         page.evaluate(() => history.pushState(undefined, '', '#')) /* eslint no-undef: off */,
     ]);
     let outputFileContent = '';
