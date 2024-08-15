@@ -35,6 +35,7 @@ async function mdToPdf(input, config = {}) {
     }
     catch (error) {
         console.error(error);
+        throw error; // Re-throw the error after logging it
     }
     finally {
         await browser.close();

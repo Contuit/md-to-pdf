@@ -95,7 +95,7 @@ export async function generateOutput(
 	 * @see https://github.com/GoogleChrome/puppeteer/issues/3083
 	 */
 	await Promise.all([
-		page.waitForNavigation({ waitUntil: 'networkidle0' }),
+		page.waitForNavigation({ waitUntil: 'networkidle0', timeout: config.timeout || 30000 }),
 		page.evaluate(() => history.pushState(undefined, '', '#')) /* eslint no-undef: off */,
 	]);
 
@@ -107,6 +107,7 @@ export async function generateOutput(
 		outputFileContent = await page.content();
 	} else {
 		await page.emulateMediaType(config.page_media_type);
+		// @ts-ignore
 		outputFileContent = await page.pdf(config.pdf_options);
 	}
 

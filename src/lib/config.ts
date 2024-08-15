@@ -173,6 +173,8 @@ interface BasicConfig {
 	 * @see https://marked.js.org/using_pro#extensions
 	 */
 	marked_extensions: marked.MarkedExtension[];
+
+	timeout?: number;
 }
 
 export type PuppeteerLaunchOptions = Parameters<typeof launch>[0];
