@@ -24,6 +24,9 @@ const hasPath = (input: Input): input is PathInput => 'path' in input;
 // Singleton instance of Puppeteer browser
 let browserInstance: Browser | null = null;
 
+// Singleton instance of the server and port
+let serverInstance: { server: any; port: number } | null = null;
+
 /**
  * Function to get the singleton Puppeteer browser instance.
  */
@@ -45,6 +48,29 @@ async function closeBrowserInstance(): Promise<void> {
 }
 
 /**
+ * Function to get the singleton server instance.
+ */
+async function getServerInstance(config: Config): Promise<{ server: any; port: number }> {
+	if (!serverInstance) {
+		// Start the server only once
+		const port = config.port || (await getPort());
+		const server = await serveDirectory({ ...config, port });
+		serverInstance = { server, port };
+	}
+	return serverInstance;
+}
+
+/**
+ * Function to close the server instance.
+ */
+async function closeServerInstance(): Promise<void> {
+	if (serverInstance) {
+		await closeServer(serverInstance.server);
+		serverInstance = null;
+	}
+}
+
+/**
  * Convert a markdown file to PDF.
  */
 export async function mdToPdf(input: ContentInput | PathInput, config?: Partial<PdfConfig>): Promise<PdfOutput>;
@@ -52,10 +78,6 @@ export async function mdToPdf(input: ContentInput | PathInput, config?: Partial<
 export async function mdToPdf(input: Input, config: Partial<Config> = {}): Promise<Output> {
 	if (!hasContent(input) && !hasPath(input)) {
 		throw new Error('The input is missing one of the properties "content" or "path".');
-	}
-
-	if (!config.port) {
-		config.port = await getPort();
 	}
 
 	if (!config.basedir) {
@@ -72,7 +94,9 @@ export async function mdToPdf(input: Input, config: Partial<Config> = {}): Promi
 		pdf_options: { ...defaultConfig.pdf_options, ...config.pdf_options },
 	};
 
-	const server = await serveDirectory(mergedConfig);
+	// Get the singleton server instance
+	const { port } = await getServerInstance(mergedConfig);
+	mergedConfig.port = port; // Ensure the correct port is set in the config
 
 	// Get the singleton browser instance
 	const browser = await getBrowserInstance(mergedConfig);
@@ -83,25 +107,25 @@ export async function mdToPdf(input: Input, config: Partial<Config> = {}): Promi
 	} catch (error) {
 		console.error(error);
 		throw error; // Re-throw the error after logging it
-	} finally {
-		await closeServer(server);
 	}
 
 	return pdf;
 }
 
-// Ensure browser is closed when the process exits
-process.on('exit', async () => {
+// Ensure resources are closed when the process exits
+const cleanup = async () => {
 	await closeBrowserInstance();
-});
+	await closeServerInstance();
+};
 
+process.on('beforeExit', cleanup);
+process.on('exit', cleanup);
 process.on('SIGINT', async () => {
-	await closeBrowserInstance();
+	await cleanup();
 	process.exit(0);
 });
-
 process.on('SIGTERM', async () => {
-	await closeBrowserInstance();
+	await cleanup();
 	process.exit(0);
 });
 

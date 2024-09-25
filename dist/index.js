@@ -15,6 +15,8 @@ const hasContent = (input) => 'content' in input;
 const hasPath = (input) => 'path' in input;
 // Singleton instance of Puppeteer browser
 let browserInstance = null;
+// Singleton instance of the server and port
+let serverInstance = null;
 /**
  * Function to get the singleton Puppeteer browser instance.
  */
@@ -33,12 +35,30 @@ async function closeBrowserInstance() {
         browserInstance = null;
     }
 }
+/**
+ * Function to get the singleton server instance.
+ */
+async function getServerInstance(config) {
+    if (!serverInstance) {
+        // Start the server only once
+        const port = config.port || (await (0, get_port_1.default)());
+        const server = await (0, serve_dir_1.serveDirectory)(Object.assign(Object.assign({}, config), { port }));
+        serverInstance = { server, port };
+    }
+    return serverInstance;
+}
+/**
+ * Function to close the server instance.
+ */
+async function closeServerInstance() {
+    if (serverInstance) {
+        await (0, serve_dir_1.closeServer)(serverInstance.server);
+        serverInstance = null;
+    }
+}
 async function mdToPdf(input, config = {}) {
     if (!hasContent(input) && !hasPath(input)) {
         throw new Error('The input is missing one of the properties "content" or "path".');
-    }
-    if (!config.port) {
-        config.port = await (0, get_port_1.default)();
     }
     if (!config.basedir) {
         config.basedir = 'path' in input ? (0, helpers_1.getDir)(input.path) : process.cwd();
@@ -47,7 +67,9 @@ async function mdToPdf(input, config = {}) {
         config.dest = '';
     }
     const mergedConfig = Object.assign(Object.assign(Object.assign({}, config_1.defaultConfig), config), { pdf_options: Object.assign(Object.assign({}, config_1.defaultConfig.pdf_options), config.pdf_options) });
-    const server = await (0, serve_dir_1.serveDirectory)(mergedConfig);
+    // Get the singleton server instance
+    const { port } = await getServerInstance(mergedConfig);
+    mergedConfig.port = port; // Ensure the correct port is set in the config
     // Get the singleton browser instance
     const browser = await getBrowserInstance(mergedConfig);
     let pdf;
@@ -58,22 +80,22 @@ async function mdToPdf(input, config = {}) {
         console.error(error);
         throw error; // Re-throw the error after logging it
     }
-    finally {
-        await (0, serve_dir_1.closeServer)(server);
-    }
     return pdf;
 }
 exports.mdToPdf = mdToPdf;
-// Ensure browser is closed when the process exits
-process.on('exit', async () => {
+// Ensure resources are closed when the process exits
+const cleanup = async () => {
     await closeBrowserInstance();
-});
+    await closeServerInstance();
+};
+process.on('beforeExit', cleanup);
+process.on('exit', cleanup);
 process.on('SIGINT', async () => {
-    await closeBrowserInstance();
+    await cleanup();
     process.exit(0);
 });
 process.on('SIGTERM', async () => {
-    await closeBrowserInstance();
+    await cleanup();
     process.exit(0);
 });
 exports.default = mdToPdf;
