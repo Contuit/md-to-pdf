@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import getPort from 'get-port';
-import puppeteer from 'puppeteer';
+import puppeteer, { Browser } from 'puppeteer';
 import { Config, defaultConfig, HtmlConfig, PdfConfig } from './lib/config';
 import { HtmlOutput, Output, PdfOutput } from './lib/generate-output';
 import { getDir } from './lib/helpers';
@@ -20,6 +20,29 @@ interface PathInput {
 
 const hasContent = (input: Input): input is ContentInput => 'content' in input;
 const hasPath = (input: Input): input is PathInput => 'path' in input;
+
+// Singleton instance of Puppeteer browser
+let browserInstance: Browser | null = null;
+
+/**
+ * Function to get the singleton Puppeteer browser instance.
+ */
+async function getBrowserInstance(config: Partial<Config> = {}): Promise<Browser> {
+	if (!browserInstance) {
+		browserInstance = await puppeteer.launch({ devtools: config.devtools, ...config.launch_options });
+	}
+	return browserInstance;
+}
+
+/**
+ * Function to close the Puppeteer browser instance.
+ */
+async function closeBrowserInstance(): Promise<void> {
+	if (browserInstance) {
+		await browserInstance.close();
+		browserInstance = null;
+	}
+}
 
 /**
  * Convert a markdown file to PDF.
@@ -51,7 +74,8 @@ export async function mdToPdf(input: Input, config: Partial<Config> = {}): Promi
 
 	const server = await serveDirectory(mergedConfig);
 
-	const browser = await puppeteer.launch({ devtools: config.devtools, ...config.launch_options });
+	// Get the singleton browser instance
+	const browser = await getBrowserInstance(mergedConfig);
 
 	let pdf;
 	try {
@@ -60,12 +84,26 @@ export async function mdToPdf(input: Input, config: Partial<Config> = {}): Promi
 		console.error(error);
 		throw error; // Re-throw the error after logging it
 	} finally {
-		await browser.close();
 		await closeServer(server);
 	}
 
 	return pdf;
 }
+
+// Ensure browser is closed when the process exits
+process.on('exit', async () => {
+	await closeBrowserInstance();
+});
+
+process.on('SIGINT', async () => {
+	await closeBrowserInstance();
+	process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+	await closeBrowserInstance();
+	process.exit(0);
+});
 
 export default mdToPdf;
 
